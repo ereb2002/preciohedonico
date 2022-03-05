@@ -1,0 +1,105 @@
+---
+title: "Precios Hedonicos"
+author: "Grupo 3"
+date: "4/3/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE, echo=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("dplyr")
+library("caret")
+library("ggplot2")
+library("openxlsx")
+
+```
+
+# Precios Hedonicos
+
+Los precios hedonicos tienen las siguientes caracteristicas:
+
+* Precios hedónicos cuando se venden en el mercado bienes diferenciados por el atributo de calidad.
+* Modelos hedónicos hacen parte de valoración de no mercado por que los bienes y servicios ocasionalmente tienen calidades que no proporciona el mercado. Muchas de las aplicaciones ambientales se relacionan con precios de vivienda, aunque modelos de salarios hedónicos se han usado para modelar la disponibilidad a pagar por evitar un riesgo.
+* La modelación consiste en usar la variación sistemática en precios de los bienes que es atribuida a las características de los bienes para obtener la disponibilidad a pagar por esas características.
+
+El modelo de los precios hedonicos varia de acuerdo a sus caractaresticas, cada una de estas caracteristicas a evaluar es una variable dentro de la funcion de asignacion de precio.
+
+P = f(caracteristica1, caracteristica2, caracteristica3, ..., caracteristicaN)
+
+# Calculo de los precios
+
+Para poder calcular el valor del precio se debe verificar que no exista colinealidad entre las variables, se puede calcular por varios metodos los cuales estan basadas en la regresion lineal multivariable aplicando diferentes tecnicas o se puede realizar.
+
+En este ejemplo vamos a calcular el precio de avaluo de viviendo en base a datos numericos de valoracion de area y a datos de caracteristicas.
+
+```{r data}
+df <- read.xlsx("precio_vivienda.xlsx")
+
+df <- as.data.frame(unclass(df),stringsAsFactors = TRUE)
+str(df)
+```
+
+## Regresion Lineal
+
+Debemos verificar el valor de Rsquared que nos da la aproximacion del modelo.
+
+```{r lineal, warning=FALSE}
+entrenamiento <- createDataPartition(df$valor_total_avaluo, p=0.7, list = FALSE)
+trainModel <- df[entrenamiento,]
+trainTest <- df[-entrenamiento,]
+
+modelo2 <- train(valor_total_avaluo ~ ., data = trainModel, method = "lm", trControl = trainControl(method = "boot", 7), ntree = 14)
+modelo2
+```
+
+## Random Forest
+
+Este modelo realiza una clasificacion por arbol a nivel de probabilidades sobre los datos no numericos y da una ponderacion a los datos numericos, debemos verificar el valor de Rsquared que nos da la aproximacion del modelo.
+
+```{r rf, warning=FALSE}
+modelo1 <- train(valor_total_avaluo ~ ., data = trainModel, method = "rf", trControl = trainControl(method = "cv", 7), ntree = 14)
+modelo1
+```
+
+# Calculo de prediccion del modelo e histograma
+
+Vamos a realizar el calculo sobre la data de prueba y verificar que tanto se aproxima el modelo.
+
+```{r prediccion, warning=FALSE}
+trainTest$prediccion2 <- predict(modelo2, trainTest)
+trainTest$prediccion1 <- predict(modelo1, trainTest)
+```
+
+# Histogramas y datos estadisticos sobre la informacion
+
+Vamos a realizar el histograma sobre cada prediccion y el analisis estadistico de la informacion.
+
+## Datos estadisticos de modelo lineal.
+
+```{r est_lineal, warning=FALSE}
+summary(trainTest$prediccion2)
+hist(trainTest$prediccion2, main = "Regresion lineal", xlab = "Valor avaluo")
+```
+
+## Datos estadisticos de entrenamiento.
+
+```{r est_test, warning=FALSE}
+summary(trainTest$valor_total_avaluo)
+hist(trainTest$valor_total_avaluo, main = "Regresion lineal", xlab = "Valor avaluo")
+```
+
+## Datos estadisticos de modelo random forest.
+
+```{r est_rf, warning=FALSE}
+summary(trainTest$prediccion1)
+hist(trainTest$prediccion1, main = "Random Forest", xlab = "Valor avaluo")
+```
+
+# Conclusion
+
+Para poder calcular un precio hedonico se debe de tener en cuenta todos los atributos de calidad que pueda tener un determinado bien y esto hace que el calculo pueda ser dificil de realizar, regularmete se utiliza un algoritmo que aplique un valor ponderado de probabilidad a las caracteristicas no numericas como el algoritmo Random Forest.
+
+https://github.com/ereb2002/preciohedonico/
+
